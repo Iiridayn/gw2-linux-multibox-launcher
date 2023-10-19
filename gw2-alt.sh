@@ -244,7 +244,7 @@ do
 	if [[ $OPT_CONFIG ]]
 	then
 		echo "Running to configure $1"
-		configure "$1" &
+		configure "$1"
 	fi
 
 	if [[ $OPT_RUN ]]
