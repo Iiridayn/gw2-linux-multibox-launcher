@@ -84,20 +84,7 @@ function setup () {
 	fi
 }
 
-function update () {
-	export WINEPREFIX="$GW2_BASE_WINEPREFIX"
-	GW2CONF_DIR="$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2"
-
-	mv "$GW2CONF_DIR"/Local.dat "$GW2CONF_DIR"/Local.dat.bak
-	cp "$GW2_ALT_BASE/conf/$1.dat" "$GW2CONF_DIR"/Local.dat
-
-	"$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/GW2-64.exe" -image &> "$GW2_ALT_BASE/$1".log
-
-	mv "$GW2CONF_DIR"/Local.dat "$GW2_ALT_BASE/conf/$1.dat"
-	cp "$GW2CONF_DIR"/Local.dat.bak "$GW2CONF_DIR"/Local.dat
-}
-
-function configure () {
+function runexclusive () {
 	export WINEPREFIX="$GW2_BASE_WINEPREFIX"
 	GW2CONF_DIR="$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2"
 
@@ -106,13 +93,22 @@ function configure () {
 	fi
 	cp "$GW2_ALT_BASE/conf/$1.dat" "$GW2CONF_DIR"/Local.dat
 
-	"$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/GW2-64.exe" $GW2_FLAGS &> "$GW2_ALT_BASE/$1".log
+	"$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/GW2-64.exe" $2 &> "$GW2_ALT_BASE/$1".log
 
 	mv "$GW2CONF_DIR"/Local.dat "$GW2_ALT_BASE/conf/$1.dat"
 	if test -f "$GW2CONF_DIR"/Local.dat.bak; then
 		cp "$GW2CONF_DIR"/Local.dat.bak "$GW2CONF_DIR"/Local.dat
 	fi
 
+	cp "$GW2_ALT_BASE/conf/$1.dat" "$GW2_ALT_BASE/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat"
+}
+
+function update () {
+	runexclusive "$1" -image
+}
+
+function configure () {
+	runexclusive "$1" "$GW2_FLAGS"
 	cp "$GW2_ALT_BASE/conf/$1.dat" "$GW2_ALT_BASE/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat"
 }
 
