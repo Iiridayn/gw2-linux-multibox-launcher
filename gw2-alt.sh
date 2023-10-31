@@ -129,7 +129,7 @@ function runwithpid () {
 
 	sess=$(ps -o sess= $$)
 	#echo "Session $sess"
-	while true; do
+	while true; do # TODO: put in a limit and print a warning if reached?
 		pid=$(ps -o pid=,comm= -s $sess | grep GW2-64.exe | cut -d' ' -f 1)
 		if [[ -n "$pid" ]]; then
 			echo $pid > "$GW2_ALT_BASE/$1".pid
@@ -140,20 +140,15 @@ function runwithpid () {
 }
 
 function waitrun () {
-	while true; do
-		if test -f "$GW2_ALT_BASE/$1".pid; then
-			pid=$(cat "$GW2_ALT_BASE/$1".pid)
-			break
-		fi
+	# TODO: put in an upper limit, and print a warning if reached?
+	while [ ! -f "$GW2_ALT_BASE/$1".pid ]; do
 		sleep 1
 	done
 
-	while true; do
-		if [ ! -f "$GW2_ALT_BASE/$1".pid ]; then
-			exit 1
-		fi
+	while [ -f "$GW2_ALT_BASE/$1".pid ]; do
 		geometry=$(xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class GW2-64.exe getwindowgeometry | tail -n 1 | cut -d: -f 2)
-		# fixed geometry for launcher window - 1120x976
+		# The geometry for the launcher window is fixed at 1120x976
+		# XXX: if the user _happens_ to pick the same window size, this won't terminate
 		if [ -n "$geometry" ] && [ "$geometry" != " 1120x976" ]; then
 			break
 		fi
@@ -162,7 +157,7 @@ function waitrun () {
 }
 
 function setname () {
-	while true; do
+	while [ -f "$GW2_ALT_BASE/$1".pid ]; do
 		name=$(xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class GW2-64.exe getwindowname)
 		if [ "$name" == "Guild Wars 2" ]; then
 			xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class GW2-64.exe set_window --name "Guild Wars 2 - $1"
@@ -173,6 +168,10 @@ function setname () {
 }
 
 function close () {
+	if [ ! -f "$GW2_ALT_BASE/$1".pid ]; then
+		echo "$1 is not running"
+		return
+	fi
 	xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class GW2-64.exe windowquit
 }
 
