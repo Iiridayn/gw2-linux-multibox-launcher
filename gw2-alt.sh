@@ -3,6 +3,13 @@
 GW2_FLAGS=""
 WINE="wine"
 
+# TODO: I should probably use $XDG_CONFIG_HOME/gw2alts for the xml file, and
+# $XDG_DATA_HOME for the individual Local.dat files; I can then run everything
+# out of $XDG_CACHE_HOME.
+# One problem is it would make it harder to see where files are, and harder to
+# ensure Local.dat files are run from the same drive (for fast copies) as the
+# game, and that the game runs on a fast drive.
+
 if [ ! -f "$XDG_CONFIG_HOME/gw2alts/config.sh" ]; then
 	cat << EOF
 No configuration file detected.
@@ -45,25 +52,25 @@ fi
 source "$XDG_CONFIG_HOME/gw2alts/config.sh"
 
 # Create conf dir if not exists
-if [ ! -d "$GW2_ALT_BASE/conf" ]; then
+if [ ! -d "$GW2_ALT_BASE/conf" ] || [ ! -f "$GW2_ALT_BASE/conf/GFXSettings.GW2-64.exe.xml" ]; then
 	mkdir -p "$GW2_ALT_BASE/conf"
 	echo "Please change graphics settings on your first launch to something you can run multiple of, then copy"
 	echo "$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/GFXSettings.GW2-64.exe.xml"
 	echo "to $GW2_ALT_BASE/conf"
+	exit 1
 fi
 
 function help () {
 	echo "GW2 Linux Multibox Launcher Script"
 	echo
-	echo "Syntax: $0 [-u|-r|-m|-n|-c|-h] num ..."
+	echo "Syntax: $0 [-s|-u|-o|-n|-c|-d|-h] num ..."
 	echo "options:"
+	echo "s	Create the account"
 	echo "u	Update the Local.dat for game updates before launching the alt. The main client must not be running. Also implies -r."
-	echo "r	Recreate the fuse filesystem for the alt, to minimize space and deviation"
-	echo "d	Remove the account"
-	echo "m	Make the account"
 	echo "o Run with the ability to make configuration changes - only one at at time"
 	echo "n	Don't run the game client; just do the other operations"
 	echo "c	Close the account"
+	echo "d	Remove the account"
 	echo "h	Show this help message"
 	echo
 	echo "Atypical Dependencies: fuse-overlayfs, xdotool, setsid, already working GW2 launch scripts"
@@ -91,7 +98,9 @@ function runexclusive () {
 	if test -f "$GW2CONF_DIR"/Local.dat; then
 		mv "$GW2CONF_DIR"/Local.dat "$GW2CONF_DIR"/Local.dat.bak
 	fi
-	cp "$GW2_ALT_BASE/conf/$1.dat" "$GW2CONF_DIR"/Local.dat
+	if test -f "$GW2_ALT_BASE/conf/$1.dat"; then
+		cp "$GW2_ALT_BASE/conf/$1.dat" "$GW2CONF_DIR"/Local.dat
+	fi
 
 	"$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/GW2-64.exe" $2 &> "$GW2_ALT_BASE/$1".log
 
@@ -100,7 +109,9 @@ function runexclusive () {
 		cp "$GW2CONF_DIR"/Local.dat.bak "$GW2CONF_DIR"/Local.dat
 	fi
 
-	cp "$GW2_ALT_BASE/conf/$1.dat" "$GW2_ALT_BASE/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat"
+	if test -d "$GW2_ALT_BASE/$1"; then
+		cp "$GW2_ALT_BASE/conf/$1.dat" "$GW2_ALT_BASE/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat"
+	fi
 }
 
 function update () {
@@ -170,7 +181,7 @@ function setname () {
 function close () {
 	if [ ! -f "$GW2_ALT_BASE/$1".pid ]; then
 		echo "$1 is not running"
-		return
+		return 1
 	fi
 	xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class GW2-64.exe windowquit
 }
@@ -192,26 +203,24 @@ fi
 OPT_UPDATE=
 OPT_SETUP=
 OPT_CONFIG=
-OPT_REBUILD=
 OPT_REMOVE=
 OPT_CLOSE=
 OPT_RUN=1
-while getopts "urnmcohd" flag; do
+while getopts "suoncdh" flag; do
 	case $flag in
-		u) OPT_UPDATE=1; OPT_REBUILD=1;;
-		r) OPT_REBUILD=1;;
-		d) OPT_REMOVE=1; OPT_RUN=;;
-		n) OPT_RUN=;;
-		m) OPT_SETUP=1; OPT_RUN=;;
+		s) OPT_SETUP=1; OPT_RUN=;;
+		u) OPT_UPDATE=1; OPT_RUN=;;
 		o) OPT_CONFIG=1; OPT_RUN=;;
+		n) OPT_RUN=;;
 		c) OPT_CLOSE=1; OPT_RUN=;;
+		d) OPT_REMOVE=1; OPT_RUN=;;
+		h)
+			help
+			exit;;
 		\?)
 			echo "Error: Invalid option"
 			help
 			exit 1;;
-		h)
-			help
-			exit;;
 	esac
 done
 
@@ -225,24 +234,18 @@ do
 		setup "$1"
 	fi
 
-	# Don't know why, but it works better if we rebuild after an update,
-	# instead of before
+	# Don't know why, but it works better if we rebuild after an update.
 	if [[ $OPT_UPDATE ]]
 	then
 		echo "Updating $1"
 		update "$1"
-	fi
-
-	if [[ $OPT_REBUILD ]]
-	then
-		echo "Rebuilding $1"
 		remove "$1"
 		setup "$1"
 	fi
 
 	if [[ $OPT_CONFIG ]]
 	then
-		echo "Running to configure $1"
+		echo "Running without -shareArchive to configure $1"
 		configure "$1"
 	fi
 
@@ -256,8 +259,9 @@ do
 
 	if [[ $OPT_CLOSE ]]
 	then
-		close "$1"
-		echo "Closed $1"
+		if close "$1"; then
+			echo "Closed $1"
+		fi
 	fi
 
 	if [[ $OPT_REMOVE ]]
