@@ -81,8 +81,10 @@ function setup () {
 	# https://en-forum.guildwars2.com/topic/47337-how-to-manage-multiple-accounts-after-12219-patch/ has some instructions I could crib
 	# See also https://wiki.guildwars2.com/wiki/Command_line_arguments/multiple_account_swapping
 
-	mkdir -p "$GW2_ALT_BASE/upper-$1" "$GW2_ALT_BASE/work-$1" "$GW2_ALT_BASE/$1"
-	fuse-overlayfs -o lowerdir=$GW2_BASE_WINEPREFIX -o upperdir="$GW2_ALT_BASE/upper-$1" -o workdir="$GW2_ALT_BASE/work-$1" "$GW2_ALT_BASE/$1"
+	if [ ! -d "$GW2_ALT_BASE/$1" ]; then
+		mkdir -p "$GW2_ALT_BASE/upper-$1" "$GW2_ALT_BASE/work-$1" "$GW2_ALT_BASE/$1"
+		fuse-overlayfs -o lowerdir=$GW2_BASE_WINEPREFIX -o upperdir="$GW2_ALT_BASE/upper-$1" -o workdir="$GW2_ALT_BASE/work-$1" "$GW2_ALT_BASE/$1"
+	fi
 
 	cp "$GW2_ALT_BASE/conf/GFXSettings.GW2-64.exe.xml" "$GW2_ALT_BASE/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/"
 	# check if the file exists first
@@ -141,7 +143,8 @@ function runwithpid () {
 	sess=$(ps -o sess= $$)
 	#echo "Session $sess"
 	while true; do # TODO: put in a limit and print a warning if reached?
-		pid=$(ps -o pid=,comm= -s $sess | grep GW2-64.exe | cut -d' ' -f 1)
+		pid=$(ps -o pid=,comm= -s $sess | grep GW2-64.exe | awk '{ print $1 }')
+		#echo "PID: $PID"
 		if [[ -n "$pid" ]]; then
 			echo $pid > "$GW2_ALT_BASE/$1".pid
 			break
@@ -157,12 +160,13 @@ function waitrun () {
 	done
 
 	while [ -f "$GW2_ALT_BASE/$1".pid ]; do
-		geometry=$(xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class GW2-64.exe getwindowgeometry | tail -n 1 | cut -d: -f 2)
+		geometry=$(xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class GW2-64.exe getwindowgeometry | tail -n 1 | awk '{ print $2 }')
 		# The geometry for the launcher window is fixed at 1120x976
 		# XXX: if the user _happens_ to pick the same window size, this won't terminate
-		if [ -n "$geometry" ] && [ "$geometry" != " 1120x976" ]; then
+		if [ -n "$geometry" ] && [ "$geometry" != '1120x976' ]; then
 			break
 		fi
+		#echo "$geometry"
 		sleep 1
 	done
 }
@@ -208,7 +212,7 @@ OPT_CLOSE=
 OPT_RUN=1
 while getopts "suoncdh" flag; do
 	case $flag in
-		s) OPT_SETUP=1; OPT_RUN=;;
+		s) OPT_SETUP=1;;
 		u) OPT_UPDATE=1; OPT_RUN=;;
 		o) OPT_CONFIG=1; OPT_RUN=;;
 		n) OPT_RUN=;;
