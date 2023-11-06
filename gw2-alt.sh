@@ -63,13 +63,13 @@ fi
 function help () {
 	echo "GW2 Linux Multibox Launcher Script"
 	echo
-	echo "Syntax: $0 [-s|-u|-o|-n|-c|-d|-h] num ..."
+	echo "Syntax: $0 [-c|-u|-o|-n|-x|-d|-h] num ..."
 	echo "options:"
-	echo "s	Create the account"
+	echo "c	Create the account"
 	echo "u	Update the Local.dat for game updates before launching the alt. The main client must not be running. Also implies -r."
 	echo "o Run with the ability to make configuration changes - only one at at time"
 	echo "n	Don't run the game client; just do the other operations"
-	echo "c	Close the account"
+	echo "x	Close the account"
 	echo "d	Remove the account"
 	echo "h	Show this help message"
 	echo
@@ -191,6 +191,10 @@ function close () {
 }
 
 function remove () {
+	if [ ! -d "$GW2_ALT_BASE/$1" ]; then
+		echo "$1 not found"
+		return 1
+	fi
 	fusermount -u "$GW2_ALT_BASE/$1"
 	rm -rf "$GW2_ALT_BASE/upper-$1" "$GW2_ALT_BASE/work-$1" "$GW2_ALT_BASE/$1"
 }
@@ -210,13 +214,13 @@ OPT_CONFIG=
 OPT_REMOVE=
 OPT_CLOSE=
 OPT_RUN=1
-while getopts "suoncdh" flag; do
+while getopts "cuonxdh" flag; do
 	case $flag in
-		s) OPT_SETUP=1;;
+		c) OPT_SETUP=1;;
 		u) OPT_UPDATE=1; OPT_RUN=;;
 		o) OPT_CONFIG=1; OPT_RUN=;;
 		n) OPT_RUN=;;
-		c) OPT_CLOSE=1; OPT_RUN=;;
+		x) OPT_CLOSE=1; OPT_RUN=;;
 		d) OPT_REMOVE=1; OPT_RUN=;;
 		h)
 			help
@@ -255,6 +259,10 @@ do
 
 	if [[ $OPT_RUN ]]
 	then
+		if [ ! -d "$GW2_ALT_BASE/$1" ]; then
+			echo "$1 not set up yet"
+			exit 1
+		fi
 		echo "Running $1"
 		setsid $me_DIR/$me_FILE run "$1" &
 		waitrun "$1"
