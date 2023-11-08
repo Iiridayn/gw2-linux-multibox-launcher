@@ -40,12 +40,12 @@ principle of [don't ask to ask](https://dontasktoask.com).
 
 If you don't want a bunch of fuser mounts in your system between runs:
 
-    gw2-alt.sh -s 01 02 03 # setup and run
-    gw2-alt.sh -cd 01 02 03 # close and remove
+    gw2-alt.sh -c 01 02 03 # setup and run
+    gw2-alt.sh -xd 01 02 03 # close and remove
 
 When the game releases updates, first run:
 
-    gw2-alt.sh -su 01 02 03 # setup and update
+    gw2-alt.sh -cu 01 02 03 # setup and update
     gw2-alt.sh 01 02 03 # run after an update
 
 ## Initial setup
