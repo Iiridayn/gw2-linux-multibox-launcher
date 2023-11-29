@@ -62,12 +62,12 @@ When the game releases updates, first run:
    you chose for the script to use.
 
 Once you're set up, you can create new `Local.dat`s for each account with
-`gw2-alt.sh -o "<name>"`, then enter username, password, save them (unless you
+`gw2-alt.sh -co "<name>"`, then enter username, password, save them (unless you
 like retyping them each time you launch), launch the game and change settings
 however you'd like (you can't change them during normal launches, only when
 launching with `-o`, which launches the game in exclusive mode), then exit. This
 should set things up so that in the future you can set up and launch multiple
-accounts with just `gw2-alt.sh -c "<name>" "<name 2>"`, etc as normal. Quotes
+accounts with just `gw2-alt.sh "<name>" "<name 2>"`, etc as normal. Quotes
 are only needed if you want a space in the account name, which I've not tested
 yet but should probably work.
 
