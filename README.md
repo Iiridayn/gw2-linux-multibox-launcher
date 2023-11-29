@@ -40,13 +40,18 @@ principle of [don't ask to ask](https://dontasktoask.com).
 
 If you don't want a bunch of fuser mounts in your system between runs:
 
-    gw2-alt.sh -c 01 02 03 # setup and run
-    gw2-alt.sh -xd 01 02 03 # close and remove
+    gw2-alt.sh -c 01 02 03 # create mounts and run
+    gw2-alt.sh -x 01 02 03 # close each
+    gw2-alt.sh -d 01 02 03 # remove mounts
 
 When the game releases updates, first run:
 
-    gw2-alt.sh -cu 01 02 03 # setup and update
-    gw2-alt.sh 01 02 03 # run after an update
+    gw2-alt.sh -cu 01 02 03 # create mounts and update
+    gw2-alt.sh 01 02 03 # run, given mounts exist already
+
+To change saved username/password or settings in one account at a time:
+
+    gw2-alt.sh -o 01 # change options/configure
 
 ## Initial setup
 
