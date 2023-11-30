@@ -51,11 +51,14 @@ fi
 
 source "$XDG_CONFIG_HOME/gw2alts/config.sh"
 
+GAME_EXE=$(basename "$(ls "$GW2_BASE_WINEPREFIX/drive_c/Program Files/Guild Wars 2/"*"-64.exe")")
+GFX_FILE="GFXSettings.$GAME_EXE.xml"
+
 # Create conf dir if not exists
-if [ ! -d "$GW2_ALT_BASE/conf" ] || [ ! -f "$GW2_ALT_BASE/conf/GFXSettings.GW2-64.exe.xml" ]; then
+if [ ! -d "$GW2_ALT_BASE/conf" ] || [ ! -f "$GW2_ALT_BASE/conf/$GFX_FILE" ]; then
 	mkdir -p "$GW2_ALT_BASE/conf"
 	echo "Please change graphics settings on your first launch to something you can run multiple of, then copy"
-	echo "$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/GFXSettings.GW2-64.exe.xml"
+	echo "$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/$GFX_FILE"
 	echo "to $GW2_ALT_BASE/conf"
 	exit 1
 fi
@@ -77,7 +80,7 @@ function help () {
 }
 
 function setup () {
-	# TODO: set up the general GFXSettings.GW2-64.exe.xml file
+	# TODO: set up the general $GFX_FILE file
 	# https://en-forum.guildwars2.com/topic/47337-how-to-manage-multiple-accounts-after-12219-patch/ has some instructions I could crib
 	# See also https://wiki.guildwars2.com/wiki/Command_line_arguments/multiple_account_swapping
 
@@ -86,7 +89,7 @@ function setup () {
 		fuse-overlayfs -o lowerdir=$GW2_BASE_WINEPREFIX -o upperdir="$GW2_ALT_BASE/upper-$1" -o workdir="$GW2_ALT_BASE/work-$1" "$GW2_ALT_BASE/$1"
 	fi
 
-	cp "$GW2_ALT_BASE/conf/GFXSettings.GW2-64.exe.xml" "$GW2_ALT_BASE/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/"
+	cp "$GW2_ALT_BASE/conf/$GFX_FILE" "$GW2_ALT_BASE/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/"
 	# check if the file exists first
 	if test -f "$GW2_ALT_BASE/conf/$1.dat"; then
 		cp "$GW2_ALT_BASE/conf/$1.dat" "$GW2_ALT_BASE/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat"
