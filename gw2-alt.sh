@@ -107,7 +107,7 @@ function runexclusive () {
 		cp "$GW2_ALT_BASE/conf/$1.dat" "$GW2CONF_DIR"/Local.dat
 	fi
 
-	"$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/GW2-64.exe" $2 &> "$GW2_ALT_BASE/$1".log
+	"$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/$GAME_EXE" $2 &> "$GW2_ALT_BASE/$1".log
 
 	mv "$GW2CONF_DIR"/Local.dat "$GW2_ALT_BASE/conf/$1.dat"
 	if test -f "$GW2CONF_DIR"/Local.dat.bak; then
@@ -130,7 +130,7 @@ function configure () {
 
 function run() {
 	export WINEPREFIX="$GW2_ALT_BASE/$1"
-	"$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/GW2-64.exe" -shareArchive $GW2_FLAGS &> "$GW2_ALT_BASE/$1".log
+	"$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/$GAME_EXE" -shareArchive $GW2_FLAGS &> "$GW2_ALT_BASE/$1".log
 
 	# Wait for the above to exit, then
 	if test -f "$GW2_ALT_BASE/$1".pid; then
@@ -146,7 +146,7 @@ function runwithpid () {
 	sess=$(ps -o sess= $$)
 	#echo "Session $sess"
 	while true; do # TODO: put in a limit and print a warning if reached?
-		pid=$(ps -o pid=,comm= -s $sess | grep GW2-64.exe | awk '{ print $1 }')
+		pid=$(ps -o pid=,comm= -s $sess | grep "$GAME_EXE" | awk '{ print $1 }')
 		#echo "PID: $PID"
 		if [[ -n "$pid" ]]; then
 			echo $pid > "$GW2_ALT_BASE/$1".pid
@@ -163,7 +163,7 @@ function waitrun () {
 	done
 
 	while [ -f "$GW2_ALT_BASE/$1".pid ]; do
-		geometry=$(xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class GW2-64.exe getwindowgeometry | tail -n 1 | awk '{ print $2 }')
+		geometry=$(xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class "$GAME_EXE" getwindowgeometry | tail -n 1 | awk '{ print $2 }')
 		# The geometry for the launcher window is fixed at 1120x976
 		# XXX: if the user _happens_ to pick the same window size, this won't terminate
 		if [ -n "$geometry" ] && [ "$geometry" != '1120x976' ]; then
@@ -176,9 +176,9 @@ function waitrun () {
 
 function setname () {
 	while [ -f "$GW2_ALT_BASE/$1".pid ]; do
-		name=$(xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class GW2-64.exe getwindowname)
+		name=$(xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class "$GAME_EXE" getwindowname)
 		if [ "$name" == "Guild Wars 2" ]; then
-			xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class GW2-64.exe set_window --name "Guild Wars 2 - $1"
+			xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class "$GAME_EXE" set_window --name "Guild Wars 2 - $1"
 			break
 		fi
 		sleep 1
@@ -190,7 +190,7 @@ function close () {
 		echo "$1 is not running"
 		return 1
 	fi
-	xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class GW2-64.exe windowquit
+	xdotool search --all --onlyvisible --pid $(<"$GW2_ALT_BASE/$1".pid) --class "$GAME_EXE" windowquit
 }
 
 function remove () {
