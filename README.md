@@ -3,7 +3,8 @@
 Gw2Launcher is a fantastic tool for windows, and the author is thankfully
 responsive to Linux issues, but the tool relies on a poorly documented Windows
 feature to kill the GW2 mutex which does not always consistently work through
-`wine`.
+`wine`. See https://github.com/Healix/Gw2Launcher/issues/249#issuecomment-1383022346
+for the comment which inspired me to build this.
 
 Because each `WINEPREFIX` has a separate windows-like environment, the mutex is
 not shared between `WINEPREFIX`s, allowing simultaneous instances of the game
