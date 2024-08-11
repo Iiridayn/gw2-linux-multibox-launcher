@@ -70,7 +70,7 @@ function help () {
 	echo "options:"
 	echo "c	Create the account"
 	echo "u	Update the Local.dat for game updates before launching the alt. The main client must not be running. Also implies -n."
-	echo "o Run with the ability to make configuration changes - only one at at time"
+	echo "o	Run with the ability to make configuration changes - only one at at time"
 	echo "n	Don't run the game client; just do the other operations"
 	echo "x	Close the account"
 	echo "d	Remove the account"
