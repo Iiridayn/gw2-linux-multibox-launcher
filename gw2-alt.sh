@@ -199,7 +199,7 @@ function remove () {
 		return 1
 	fi
 	fusermount -u "$GW2_ALT_BASE/$1"
-	rm -rf "$GW2_ALT_BASE/upper-$1" "$GW2_ALT_BASE/work-$1" "$GW2_ALT_BASE/$1"
+	rm -rf "$GW2_ALT_BASE/upper-$1" "$GW2_ALT_BASE/work-$1" "${GW2_ALT_BASE:?}/$1"
 }
 
 # Check if I'm launching the game in a setsid subshell
