@@ -85,8 +85,17 @@ function setup () {
 	# See also https://wiki.guildwars2.com/wiki/Command_line_arguments/multiple_account_swapping
 
 	if [ ! -d "$GW2_ALT_BASE/$1" ]; then
-		mkdir -p "$GW2_ALT_BASE/upper-$1" "$GW2_ALT_BASE/work-$1" "$GW2_ALT_BASE/$1"
-		fuse-overlayfs -o lowerdir=$GW2_BASE_WINEPREFIX -o upperdir="$GW2_ALT_BASE/upper-$1" -o workdir="$GW2_ALT_BASE/work-$1" "$GW2_ALT_BASE/$1"
+		mkdir -p "$GW2_ALT_BASE/work-$1" "$GW2_ALT_BASE/$1"
+
+		# We have a template upper directory including file overrides; use it
+		# TODO: document this, how to create by getting how you want then copying the upper dir, and removing unessential changes
+		if test -d "$GW2_ALT_BASE/conf/upper"; then
+			cp -a "$GW2_ALT_BASE/conf/upper" "$GW2_ALT_BASE/upper-$1"
+		else
+			mkdir "$GW2_ALT_BASE/upper-$1"
+		fi
+
+		fuse-overlayfs -o lowerdir="$GW2_BASE_WINEPREFIX" -o upperdir="$GW2_ALT_BASE/upper-$1" -o workdir="$GW2_ALT_BASE/work-$1" "$GW2_ALT_BASE/$1"
 	fi
 
 	cp "$GW2_ALT_BASE/conf/$GFX_FILE" "$GW2_ALT_BASE/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/"
