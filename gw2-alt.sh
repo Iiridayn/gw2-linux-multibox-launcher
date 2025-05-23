@@ -3,7 +3,7 @@
 GW2_FLAGS=""
 WINE="wine"
 
-CONFIG_DIR=${XDG_CONFIG_HOME:-"$HOME/.config"}
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/gw2alts"
 
 # TODO: I should probably use $XDG_CONFIG_HOME/gw2alts for the xml file, and
 # $XDG_DATA_HOME for the individual Local.dat files; I can then run everything
@@ -12,11 +12,11 @@ CONFIG_DIR=${XDG_CONFIG_HOME:-"$HOME/.config"}
 # ensure Local.dat files are run from the same drive (for fast copies) as the
 # game, and that the game runs on a fast drive.
 
-if [ ! -f "$CONFIG_DIR/gw2alts/config.sh" ]; then
+if [ ! -f "$CONFIG_DIR/config.sh" ]; then
 	cat << EOF
 No configuration file detected.
 Please create a configuration directory with:
-  mkdir $CONFIG_DIR/gw2alts"
+  mkdir $CONFIG_DIR"
 Then add a file named "config.sh" with the following lines:
 
 exit 1
@@ -51,7 +51,7 @@ EOF
 	exit 1
 fi
 
-source "$CONFIG_DIR/gw2alts/config.sh"
+source "$CONFIG_DIR/config.sh"
 
 GAME_EXE=$(basename "$(ls "$GW2_BASE_WINEPREFIX/drive_c/Program Files/Guild Wars 2/"*"-64.exe")")
 GFX_FILE="GFXSettings.$GAME_EXE.xml"
