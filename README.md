@@ -11,14 +11,17 @@ not shared between `WINEPREFIX`s, allowing simultaneous instances of the game
 from distinct `WINEPREFIX`s. However, the `Gw2.dat` file is 66 G and counting,
 making storing multiple instances challenging.
 
-This script uses `fuse-overlayfs`, `setsid`, and `xdotool` to dynamically create
+This script uses `fuse-overlayfs` and `xdotool` to dynamically create
 `WINEPREFIX`s with minimal overhead, run the game, and detect launches (allowing
 sequential launch to avoid X11 CPU overuse trying to draw overlapping odd
-geometry partially transparent windows).
+geometry partially transparent windows). (Also `setsid` and `pgrep` which should
+be available from `util-linux` and `procps-ng` respectively).
 
 It requires you to already be able to run GW2 from the command line (if you
-have a working install via Lutris, you can use something like `lutris
-guild-wars-2 --output-script gw2.sh`).
+have a working install via Lutris, you can generate one with something like
+`lutris guild-wars-2 --output-script gw2.sh`). You need a working cli launch
+script, as you use configuration from that to tell this runner how to launch the
+game.
 
 It works great on the two machines I use (both Arch Linux, one installed
 w/Lutris and one w/o), but will need broader testing to verify it works for
@@ -59,7 +62,7 @@ To change saved username/password or settings in one account at a time:
 1. Install GW2 normally and ensure it runs.
 2. Create a launch script, and ensure it runs GW2 from the command line
 3. Backup your `GFXSettings.GW2-64.exe.xml` (in `<gw2 WINEPREFIX>/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/`), run the game and set graphics to values you'd like to run multiple clients with (all minimums likely), then stash the modified `GFXSettings.GW2-64.exe.xml` and restore your nice one for regular use.
-4. Run the script
+4. Run the script - make sure it's executable (`chmod +x <downloaded filename>`)
 5. Choose a base location for the script to use to run and store data, create
    `$XDG_CONFIG_HOME/gw2alts`, and update `$XDG_CONFIG_HOME/gw2alts/config.sh`
    as directed.
