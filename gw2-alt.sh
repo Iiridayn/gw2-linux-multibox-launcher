@@ -77,7 +77,7 @@ fi
 function help () {
 	echo "GW2 Linux Multibox Launcher Script"
 	echo
-	echo "Syntax: $0 [-c|-u|-o|-n|-x|-d|-h] num ..."
+	echo "Syntax: $0 [-c|-u|-o|-n|-x|-d|-h] name ..."
 	echo "options:"
 	echo "c	Create the account"
 	echo "u	Update the Local.dat for game updates before launching the alt. The main client must not be running. Also implies -n."
@@ -85,11 +85,16 @@ function help () {
 	echo "n	Don't run the game client; just do the other operations"
 	echo "x	Close the account"
 	echo "d	Remove the account"
+	echo "l	List set up accounts"
 	echo "h	Show this help message"
 	echo
 	echo "Atypical Dependencies: fuse-overlayfs and xdotool, an already working GW2 launch script"
 	# setsid is provided by util-linux, which also provides mount
 	# pgrep is provided by procps-ng, which also provides ps
+}
+
+function list () {
+	find "$GW2_ALT_BASE/conf" -iname '*.dat' | sort -h | xargs basename -s .dat | paste -sd' '
 }
 
 function setup () {
@@ -257,7 +262,7 @@ OPT_CONFIG=
 OPT_REMOVE=
 OPT_CLOSE=
 OPT_RUN=1
-while getopts "cuonxdh" flag; do
+while getopts "cuonxdlh" flag; do
 	case $flag in
 		c) OPT_SETUP=1;;
 		u) OPT_UPDATE=1; OPT_RUN=;;
@@ -265,6 +270,9 @@ while getopts "cuonxdh" flag; do
 		n) OPT_RUN=;;
 		x) OPT_CLOSE=1; OPT_RUN=;;
 		d) OPT_REMOVE=1; OPT_RUN=;;
+		l)
+			list
+			exit;;
 		h)
 			help
 			exit;;
