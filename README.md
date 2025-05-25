@@ -96,6 +96,19 @@ yet but should probably work.
 - Something else: check the log file for the account; they often have useful
   information to diagnose and fix issues.
 
+### Core Idea
+
+If you run into trouble, you can see if the basic idea works on your system
+manually, to see if the core concept is causing trouble or the helpful
+automation is wrong. The core steps the script does are:
+
+To set up an account:
+1. Create `upper-account-name` and `work-account-name` directories and run `fuse-overlayfs -o lowerdir="$GW2_BASE_WINEPREFIX" -o upperdir="upper-account-name" -o workdir="work-account-name" account-name`. This creates a COW clone of the GW2_BASE_WINEPREFIX which should remain tiny
+2. Back up your Local.dat from `$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat`, launch the game and set up the alt account the way you want it, copy the new Local.dat file somewhere like `account-name.dat` and restore your backed up `Local.dat` file.
+3. Do the same for `GFXSettings.Gw2-64.exe.xml`, found in `$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/` - back up the original, set up graphics settings for the alts, save the new file elsewhere and restore the original
+4. Copy the `GFXSettings.Gw2-64.exe.xml` to `account-name/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/` and `account-name.dat` file to `account-name/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat`. This overwrites only those files in the COW version of the game directory.
+5. Launch the game with your normal command-line launcher script, except change the `WINEPREFIX` to be `account-name` instead of `$GW2_BASE_WINEPREFIX`, and you must pass the `-shareArchive` flag to GW2 or the game does a deep copy of the install since the game files are opened in exclusive mode. An example command: WINEPREFIX=account-name wine "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/Gw2-64.exe" -shareArchive -windowed
+
 ## License
 
 This script is licensed under the terms of the WTFPL version 2.

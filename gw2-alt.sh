@@ -19,13 +19,14 @@ Please create a configuration directory with:
   mkdir $CONFIG_DIR"
 Then add a file named "config.sh" with the following lines:
 
-exit 1
-GW2_BASE_WINEPREFIX="<where Guild Wars 2 is - will have a dosdevices and drive_c subfolder>"
-GW2_ALT_BASE="<where you want alts to store their information - don't forget to create it!>"
-GW2_FLAGS="<what options you'd like to pass to Guild Wars 2 when it runs - see https://wiki.guildwars2.com/wiki/Command_line_arguments>"
+echo "Please finish configuration"; exit 1
+export GW2_BASE_WINEPREFIX="<where Guild Wars 2 is - will have a dosdevices and drive_c subfolder>"
+export GW2_ALT_BASE="<where you want alts to store their information - don't forget to create it!>"
+export GW2_FLAGS=(<what options you'd like to pass to Guild Wars 2 when it runs - see https://wiki.guildwars2.com/wiki/Command_line_arguments>)
 
-Then change everything inside the quotes according to what it says it should be
-and remove the line that says "exit 1"
+Then replace everything inside the <description> including the "<" and ">"
+characters according to what it says it should be there and remove the line
+that says "exit 1".
 
 You should also put in the config.sh any environment variables needed to run
 the game just like you would find in a Lutris launch script. Each of those
@@ -178,8 +179,8 @@ function runwithpid () {
 	sess=$(ps -o sess= $$)
 	#echo "Session $sess"
 	while true; do # TODO: put in a limit and print a warning if reached?
-		#pid=$(ps -o pid=,comm= -s $sess | grep "$GAME_EXE" | awk '{ print $1 }')
-		pid=$(pgrep -s "$sess" -f "$GAME_EXE")
+		pid=$(ps -o pid=,comm= -s $sess | grep "$GAME_EXE" | awk '{ print $1 }')
+		#pid=$(pgrep -s "$sess" -f "$GAME_EXE")
 		#echo "PID: $PID"
 		if [[ -n "$pid" ]]; then
 			echo "$pid" > "$GW2_ALT_BASE/$1".pid
@@ -192,7 +193,7 @@ function runwithpid () {
 function getwindowhandle () {
 	local pid
 	pid=$(<"$GW2_ALT_BASE/$1".pid)
-	return "$(xdotool search --all --onlyvisible --pid "$pid" --class "$GAME_EXE")"
+	xdotool search --all --onlyvisible --pid "$pid" --class "$GAME_EXE"
 }
 
 function waitrun () {
