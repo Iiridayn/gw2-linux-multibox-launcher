@@ -8,25 +8,26 @@ for the comment which inspired me to build this.
 
 Because each `WINEPREFIX` has a separate windows-like environment, the mutex is
 not shared between `WINEPREFIX`s, allowing simultaneous instances of the game
-from distinct `WINEPREFIX`s. However, the `Gw2.dat` file is 66 G and counting,
+from distinct `WINEPREFIX`s. However, the `Gw2.dat` file is 76 G and counting,
 making storing multiple instances challenging.
 
-This script uses `fuse-overlayfs` and `xdotool` to dynamically create
-`WINEPREFIX`s with minimal overhead, run the game, and detect launches (allowing
+This script uses `fuse-overlayfs` to dynamically create `WINEPREFIX`s with
+minimal overhead, runs the game, and uses `xdotool` to detect launches (allowing
 sequential launch to avoid X11 CPU overuse trying to draw overlapping odd
 geometry partially transparent windows). Other dependencies which are _usually_
 installed by default: `bash`, `setsid` (probably from `util-linux`) and `pgrep`
 (probably from `procps-ng`).
 
-It requires you to already be able to run GW2 from the command line (if you
-have a working install via Lutris, you can generate one with something like
-`lutris guild-wars-2 --output-script gw2.sh`). You need a working cli launch
-script, as you use configuration from that to tell this runner how to launch the
-game.
+To use this script you need to already be able to run GW2 from the command line
+(if you have a working install via Lutris, you can generate one with something
+like `lutris guild-wars-2 --output-script gw2.sh`). You need a working cli
+launch script, as you use configuration from that to tell this runner how to
+launch the game.
 
-It works great on the two machines I use (both Arch Linux, one installed
-w/Lutris and one w/o), but will need broader testing to verify it works for
-others; consider this an alpha release. The command line options _may_ change.
+This script works great on the two machines I use (one Arch Linux, one Fedora;
+it previously worked on another Arch host without a Lutris install as well), but
+will need broader testing to verify it works for others; consider this an alpha
+release. The command line options have already changed once, and _may_ again.
 
 ## Support
 
@@ -43,43 +44,73 @@ principle of [don't ask to ask](https://dontasktoask.com).
 
 ## Usage examples
 
-If you don't want a bunch of fuser mounts in your system between runs:
+Note that these examples assume you have `gw2-alt.sh` in your `PATH`.
 
-    gw2-alt.sh -c 01 02 03 # create mounts and run
-    gw2-alt.sh -x 01 02 03 # close each
-    gw2-alt.sh -d 01 02 03 # remove mounts
+Set up a new account (once the program is set up) or update settings:
 
-When the game releases updates, first run:
+    gw2-alt.sh -o 04 # change options/configure; only 1 account at at time
 
-    gw2-alt.sh -cu 01 02 03 # create mounts and update
-    gw2-alt.sh 01 02 03 # run, given mounts exist already
+When the game releases updates, each alt must update their Local.dat:
 
-To change saved username/password or settings in one account at a time:
+    gw2-alt.sh -u 01 02 03 # run in update-only mode
 
-    gw2-alt.sh -o 01 # change options/configure
+Launch multiple accounts, waiting for each to load before launching the next:
 
-## Initial setup
+    gw2-alt.sh 01 02 03
+
+## Installation
 
 1. Install GW2 normally and ensure it runs.
-2. Create a launch script, and ensure it runs GW2 from the command line
-3. Backup your `GFXSettings.GW2-64.exe.xml` (in `<gw2 WINEPREFIX>/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/`), run the game and set graphics to values you'd like to run multiple clients with (all minimums likely), then stash the modified `GFXSettings.GW2-64.exe.xml` and restore your nice one for regular use.
-4. Run the script - make sure it's executable (`chmod +x <downloaded filename>`)
-5. Choose a base location for the script to use to run and store data, create
-   `$XDG_CONFIG_HOME/gw2alts`, and update `$XDG_CONFIG_HOME/gw2alts/config.sh`
-   as directed.
-6. Run again
-7. Copy your `GFXSettings.GW2-64.exe.xml` to the `conf` folder of the directory
-   you chose for the script to use.
+2. Create a launch script, and ensure it runs GW2 from the command line (from
+   Lutris, you would create it with `lutris guild-wars-2 --output-script
+   gw2.sh`).
+3. Backup your `GFXSettings.GW2-64.exe.xml` (from `<gw2
+   WINEPREFIX>/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/`), run the game
+   and set graphics to values you'd like to run multiple clients with (all
+   minimums likely), then stash the modified `GFXSettings.GW2-64.exe.xml` and
+   restore your nice one for regular use.
+4. Download the script and make sure it's executable (`chmod +x <downloaded filename>`)
+5. Run the script - for example `./gw2-alt.sh` to run it from the current
+   directory. This will create a config file.
+6. Edit the config.sh file created - ensure you provide the path to the GW2
+   WINE prefix and all the environment variables required to run the game,
+   copied from your working launch script from step 2.
+7. Run the script again - this will create the runtime and data directories
+8. Copy your stashed `GFXSettings.GW2-64.exe.xml` to the data directory.
 
-Once you're set up, you can create new `Local.dat`s for each account with
-`gw2-alt.sh -co "<name>"`, then enter username, password, save them (unless you
-like retyping them each time you launch), launch the game and change settings
-however you'd like (you can't change them during normal launches, only when
-launching with `-o`, which launches the game in exclusive mode), then exit. This
-should set things up so that in the future you can set up and launch multiple
-accounts with just `gw2-alt.sh "<name>" "<name 2>"`, etc as normal. Quotes
-are only needed if you want a space in the account name, which I've not tested
-yet but should probably work.
+### Setting up accounts
+
+To set up an account, ensure no other accounts are running, then run `gw2-alt.sh
+-o account-name`. Save the username and password, log in and launch the account
+and change local settings however you'd like to keep them, then close the game
+client. From now on you can launch that account as `gw2-alt.sh account-name`. If
+you want to change local settings for that account again, you have to launch it
+while no other accounts are running using the `-o` option again.
+
+If you want a space in the account name, you must refer to it with quotes around
+it every time, or it thinks you want to launch an account per word. This should
+work - please let me know if you use it and run into problems.
+
+### Running Accounts
+
+### GW2 Configuration without Lutris
+
+For a system without a Lutris install, I was able to run the game with the
+following environment:
+
+    export WINEARCH="win64"
+
+    export WINEESYNC="1"
+    export WINEFSYNC="1"
+    export WINE_LARGE_ADDRESS_AWARE="1"
+
+    export __GL_SHADER_DISK_CACHE="1"
+    export __GL_SHADER_DISK_CACHE_PATH="$GW2_BASE_WINEPREFIX"
+    export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1
+
+    # Save RAM - too chatty
+    export DXVK_LOG_LEVEL="none"
+    export WINEDEBUG="-all"
 
 ## Troubleshooting
 
@@ -93,9 +124,22 @@ yet but should probably work.
 - My computer is too slow: reduce graphics settings (and update the stashed
   `GFXSettings.GW2-64.exe.xml`), buy more RAM (I think each account requires
   around 4 G of free RAM), get a CPU with more cores, etc. RAM is often a key
-  bottleneck here.
+  bottleneck here. You probably won't be able to run as many accounts in
+  parallel as in Windows, per one early user.
 - Something else: check the log file for the account; they often have useful
   information to diagnose and fix issues.
+- Client stuck on Downloading while launching: kill all running clients, all
+  wine processes, all '.exe' processes, etc (`ps aux | grep '\.exe\|wine'`),
+  then try launching them all again. Please let me know if you know how to
+  prevent this; one user suggested putting `sudo` before `fuse-overlayfs` but I
+  have not tested it yet.
+- Can't unmount - "Device or resource busy": `lsof +D
+  ~/.cache/gw2alts/account-name` then start killing things until it is no longer
+  busy.
+- Can't kill processes even with `kill -9`, computer sluggish, lots of disk io
+  (`iotop`) w/o a process: you probably put the fuse-overlayfs on a different
+  filesystem than the game was installed on. Sadly, you can only wait for the
+  game files to copy over or reboot to interrupt the process.
 
 ### Core Idea
 
@@ -104,7 +148,7 @@ manually, to see if the core concept is causing trouble or the helpful
 automation is wrong. The core steps the script does are:
 
 To set up an account:
-1. Create `upper-account-name` and `work-account-name` directories and run `fuse-overlayfs -o lowerdir="$GW2_BASE_WINEPREFIX" -o upperdir="upper-account-name" -o workdir="work-account-name" account-name`. This creates a COW clone of the GW2_BASE_WINEPREFIX which should remain tiny
+1. Create `upper-account-name` and `work-account-name` directories and run `fuse-overlayfs -o lowerdir="$GW2_BASE_WINEPREFIX" -o upperdir="upper-account-name" -o workdir="work-account-name" account-name`. This creates a [COW](https://en.wikipedia.org/wiki/Copy-on-write) clone of the GW2_BASE_WINEPREFIX which should remain tiny - `du -sh upper-account-name` to find out the true storage used. If it doesn't remain tiny, you may have launched a client without `-shareArchive`; it also appears putting fuse-overlayfs directories on a different device than the data also causes a full copy.
 2. Back up your Local.dat from `$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat`, launch the game and set up the alt account the way you want it, copy the new Local.dat file somewhere like `account-name.dat` and restore your backed up `Local.dat` file.
 3. Do the same for `GFXSettings.Gw2-64.exe.xml`, found in `$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/` - back up the original, set up graphics settings for the alts, save the new file elsewhere and restore the original
 4. Copy the `GFXSettings.Gw2-64.exe.xml` to `account-name/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/` and `account-name.dat` file to `account-name/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat`. This overwrites only those files in the COW version of the game directory.
