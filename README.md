@@ -20,7 +20,7 @@ installed by default: `bash`, `setsid` (probably from `util-linux`) and `pgrep`
 
 To use this script you need to already be able to run GW2 from the command line
 (if you have a working install via Lutris, you can generate one with something
-like `lutris guild-wars-2 --output-script gw2.sh`). You need a working cli
+like `lutris --output-script guild-wars-2`). You need a working cli
 launch script, as you use configuration from that to tell this runner how to
 launch the game.
 
@@ -62,8 +62,7 @@ Launch multiple accounts, waiting for each to load before launching the next:
 
 1. Install GW2 normally and ensure it runs.
 2. Create a launch script, and ensure it runs GW2 from the command line (from
-   Lutris, you would create it with `lutris guild-wars-2 --output-script
-   gw2.sh`).
+   Lutris, you would create it with `lutris --output-script guild-wars-2`).
 3. Backup your `GFXSettings.GW2-64.exe.xml` (from `<gw2
    WINEPREFIX>/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/`), run the game
    and set graphics to values you'd like to run multiple clients with (all

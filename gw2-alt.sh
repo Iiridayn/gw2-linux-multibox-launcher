@@ -39,7 +39,7 @@ export GW2_FLAGS=()
 
 # Replace the lines below this with all the environment variables needed to run
 # GW2 - these come from your CLI launcher script. If you generated it via:
-# \`lutris guild-wars-2 --output-script gw2.sh\`
+# \`lutris --output-script guild-wars-2\`
 # You would copy the entire block that starts with
 # # Environment Variables
 # here, but not the "Working Directory" or "Command" lines - this script is
