@@ -146,7 +146,7 @@ function list () {
 	if [ -z "$list" ]; then
 		echo "No accounts found. Set one up by running \`$0 -o account-name\`"
 	else
-		echo $list
+		echo "$list"
 	fi
 }
 
@@ -178,6 +178,7 @@ function setup () {
 	fi
 }
 
+# Run, using the original installation
 function runexclusive () {
 	export WINEPREFIX="$GW2_BASE_WINEPREFIX"
 	GW2CONF_DIR="$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2"
@@ -200,6 +201,7 @@ function runexclusive () {
 		cp "$GW2CONF_DIR"/Local.dat.bak "$GW2CONF_DIR"/Local.dat
 	fi
 
+	# If there is a set up mount for that account, copy the updated .dat file there too
 	if test -d "$GW2_ALT_RUNTIME_DIR/$name"; then
 		cp "$GW2_ALT_DATA_DIR/$name.dat" "$GW2_ALT_RUNTIME_DIR/$name/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat"
 	fi
