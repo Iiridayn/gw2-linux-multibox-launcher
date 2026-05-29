@@ -24,10 +24,11 @@ like `lutris --output-script guild-wars-2`). You need a working cli
 launch script, as you use configuration from that to tell this runner how to
 launch the game.
 
-This script works great on the two machines I use (one Arch Linux, one Fedora;
-it previously worked on another Arch host without a Lutris install as well), but
-will need broader testing to verify it works for others; consider this an alpha
-release. The command line options have already changed once, and _may_ again.
+This script works well on my Arch Linux machine (32G RAM, 60G swap, 5 accounts
+in parallel, with `GW2_MEMORY_MAX="4G"` and `GW2_MEMORY_HIGH="3G"`), but it has
+not always consistently worked for others, and I've not always been able to
+track down why. This is still alpha software. The command line options have
+already changed once, and _may_ again.
 
 ## Support
 

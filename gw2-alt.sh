@@ -36,6 +36,12 @@ export GW2_FLAGS=()
 #export GW2_ALT_DATA_DIR="$GW2_ALT_DATA_DIR"
 # Optionally set where the mountpoints and log files will be created
 #export GW2_ALT_RUNTIME_DIR="$GW2_ALT_RUNTIME_DIR"
+# Optionally cap the RAM per process to ease RAM pressure when running several accounts
+# This does also require systemd-run, systemd.unified_cgroup_hierarchy=1
+# (probably default), and systemd configured to deletegate memory to cgroups
+# (also probably default)
+#export GW2_MEMORY_MAX="4G"
+#export GW2_MEMORY_HIGH="3G"
 
 # Replace the lines below this with all the environment variables needed to run
 # GW2 - these come from your CLI launcher script. If you generated it via:
@@ -116,6 +122,17 @@ fi
 # support declaring flags as a string "" instead of an array ()
 if [[ ! "$(declare -p GW2_FLAGS 2>/dev/null)" =~ "declare -a" ]]; then
     read -ra GW2_FLAGS <<< "$GW2_FLAGS"
+fi
+
+MEMORY_LIMIT_CMD=()
+if [ -n "$GW2_MEMORY_MAX" ] && command -v systemd-run &>/dev/null; then
+	_uid_cgroup="/sys/fs/cgroup/user.slice/user-$(id -u).slice"
+	if [ -f "$_uid_cgroup/memory.max" ]; then
+		MEMORY_LIMIT_CMD=(systemd-run --user --scope --slice gw2-alts -p "MemoryMax=$GW2_MEMORY_MAX")
+		[ -n "$GW2_MEMORY_HIGH" ] && MEMORY_LIMIT_CMD+=(-p "MemoryHigh=$GW2_MEMORY_HIGH")
+	else
+		echo "Warning: GW2_MEMORY_MAX set but cgroup memory controller not delegated to user scope; running without memory limit"
+	fi
 fi
 
 # Setup done - from here is the runtime section
@@ -216,12 +233,13 @@ function update () {
 
 function configure () {
 	runexclusive "$1" "${GW2_FLAGS[@]}"
-	cp "$GW2_ALT_DATA_DIR/$1.dat" "$GW2_ALT_RUNTIME_DIR/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat"
 }
 
 function run() {
 	export WINEPREFIX="$GW2_ALT_RUNTIME_DIR/$1"
-	"$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/$GAME_EXE" -shareArchive "${GW2_FLAGS[@]}" &> "$GW2_ALT_RUNTIME_DIR/$1".log
+	local launch=("${MEMORY_LIMIT_CMD[@]}")
+	[[ ${#launch[@]} -gt 0 ]] && launch+=(--unit "gw2-$1" --)
+	"${launch[@]}" "$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/$GAME_EXE" -shareArchive "${GW2_FLAGS[@]}" &> "$GW2_ALT_RUNTIME_DIR/$1".log
 
 	# Wait for the above to exit, then
 	if test -f "$GW2_ALT_RUNTIME_DIR/$1".pid; then
@@ -237,15 +255,17 @@ function run() {
 function runwithpid () {
 	run "$1" &
 
-	local sess
-	sess=$(ps -o sess= $$)
-	#echo "Session $sess"
-	while true; do # TODO: put in a limit and print a warning if reached?
-		pid=$(ps -o pid=,comm= -s $sess | grep "$GAME_EXE" | awk '{ print $1 }')
-		#pid=$(pgrep -s "$sess" -f "$GAME_EXE")
-		#echo "PID: $PID"
+	local sess pid count=0
+	sess=$(ps -o sess= $$ | xargs)
+	while true; do
+		pid=$(ps -o pid=,comm= -s "$sess" | grep "$GAME_EXE" | awk '{ print $1 }')
 		if [[ -n "$pid" ]]; then
 			echo "$pid" > "$GW2_ALT_RUNTIME_DIR/$1".pid
+			break
+		fi
+		count=$((count + 1))
+		if [[ $count -ge 120 ]]; then
+			echo "Warning: timed out waiting for $GAME_EXE to start" >&2
 			break
 		fi
 		sleep 1
@@ -301,6 +321,7 @@ function close () {
 		echo "$1 is not running"
 		return 1
 	fi
+	local handle
 	handle=$(getwindowhandle "$1")
 	xdotool windowquit "$handle"
 }
