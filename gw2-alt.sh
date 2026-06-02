@@ -15,6 +15,7 @@ GW2_FLAGS=()
 WINE="wine" # default
 GW2_ALT_RUNTIME_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/gw2alts"
 GW2_ALT_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/gw2alts"
+GW2_WINE_INSTALL_PATH="drive_c/Program Files/Guild Wars 2" # default
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/gw2alts"
 
@@ -84,7 +85,17 @@ EOF
 	exit 1
 fi
 
-GAME_EXE=$(basename "$(ls "$GW2_BASE_WINEPREFIX/drive_c/Program Files/Guild Wars 2/"*"-64.exe")")
+if [ ! -d "$GW2_BASE_WINEPREFIX/$GW2_WINE_INSTALL_PATH" ]; then
+	echo "Cannot find the GW2 executable. Please configure GW2_WINE_INSTALL_PATH."
+	exit 1
+fi
+exes=("$GW2_BASE_WINEPREFIX/$GW2_WINE_INSTALL_PATH/"*"-64.exe")
+if [[ ! -e "${exes[0]}" ]]; then
+	echo "Cannot find the GW2 executable. Please configure GW2_WINE_INSTALL_PATH."
+	exit 1
+fi
+GAME_EXE=$(basename "${exes[0]}")
+
 GFX_FILE="GFXSettings.$GAME_EXE.xml"
 
 function get_drive () {
@@ -211,7 +222,7 @@ function runexclusive () {
 		cp "$GW2_ALT_DATA_DIR/$name.dat" "$GW2CONF_DIR"/Local.dat
 	fi
 
-	"$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/$GAME_EXE" "${args[@]}" &> "$GW2_ALT_RUNTIME_DIR/$name".log
+	"$WINE" "$WINEPREFIX/$GW2_WINE_INSTALL_PATH/$GAME_EXE" "${args[@]}" &> "$GW2_ALT_RUNTIME_DIR/$name".log
 
 	mv "$GW2CONF_DIR"/Local.dat "$GW2_ALT_DATA_DIR/$name.dat"
 	if test -f "$GW2CONF_DIR"/Local.dat.bak; then
@@ -239,7 +250,7 @@ function run() {
 	export WINEPREFIX="$GW2_ALT_RUNTIME_DIR/$1"
 	local launch=("${MEMORY_LIMIT_CMD[@]}")
 	[[ ${#launch[@]} -gt 0 ]] && launch+=(--unit "gw2-$1" --)
-	"${launch[@]}" "$WINE" "$WINEPREFIX/drive_c/Program Files/Guild Wars 2/$GAME_EXE" -shareArchive "${GW2_FLAGS[@]}" &> "$GW2_ALT_RUNTIME_DIR/$1".log
+	"${launch[@]}" "$WINE" "$WINEPREFIX/$GW2_WINE_INSTALL_PATH/$GAME_EXE" -shareArchive "${GW2_FLAGS[@]}" &> "$GW2_ALT_RUNTIME_DIR/$1".log
 
 	# Wait for the above to exit, then
 	if test -f "$GW2_ALT_RUNTIME_DIR/$1".pid; then
