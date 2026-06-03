@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Quick check for some issues early users found
-if [ "$0" = "bash" ]; then
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
 	echo "This script does not work properly if you source it - please ensure it is executable via \`chmod +x gw2-alt.sh\` and run it via for example \`./gw2-alt.sh\`"
-	exit 1
+	return 1
 fi
 if [ ! -f "/bin/bash" ]; then
 	echo "This script expects to be run by bash. Please make sure it is installed on your system."
@@ -16,7 +16,7 @@ WINE="wine" # default
 GW2_ALT_RUNTIME_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/gw2alts"
 GW2_ALT_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/gw2alts"
 GW2_WINE_INSTALL_PATH="drive_c/Program Files/Guild Wars 2" # default
-GW2_WINE_APPDATA_PATH="drive_c/users/$USER/AppData/Roaming/Guild Wars 2"
+GW2_WINE_USER="$USER"
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/gw2alts"
 
@@ -87,7 +87,8 @@ EOF
 fi
 
 # Variables derived from others set
-GW2_BASE_APPDATA="$GW2_BASE_WINEPREFIX/$GW2_WINE_APPDATA_PATH"
+GW2_APPDATA_PATH="drive_c/users/$GW2_WINE_USER/AppData/Roaming/Guild Wars 2"
+GW2_BASE_APPDATA="$GW2_BASE_WINEPREFIX/$GW2_APPDATA_PATH"
 
 # Figure out the executable name; I've seen GW2-64.exe and Gw2-64.exe; windows
 # is by default case-insensitive, so the change wasn't a problem there.
@@ -127,12 +128,12 @@ if [ ! -d "$GW2_ALT_DATA_DIR" ]; then
 
 	cat << EOF
 
-Copying "$GW2_BASE_WINEPREFIX/$GW2_WINE_APPDATA_PATH/$GFX_FILE" to $GW2_ALT_DATA_DIR
+Copying "$GW2_BASE_WINEPREFIX/$GW2_APPDATA_PATH/$GFX_FILE" to $GW2_ALT_DATA_DIR
 If you would like to have special (eg, reduced) graphics settings when running multiple accounts, please backup your $GFX_FILE, launch the game and change your graphics to the multibox values, replace $GW2_ALT_DATA_DIR/$GFX_FILE with the updated file, and restore your previous $GFX_FILE
 Alternatively, you can copy a previously prepared $GFX_FILE to $GW2_ALT_DATA_DIR/
 
 EOF
-	cp "$GW2_BASE_WINEPREFIX/$GW2_WINE_APPDATA_PATH/$GFX_FILE" "$GW2_ALT_DATA_DIR"
+	cp "$GW2_BASE_WINEPREFIX/$GW2_APPDATA_PATH/$GFX_FILE" "$GW2_ALT_DATA_DIR"
 fi
 
 # Should be after the block above that creates GW2_ALT_RUNTIME_DIR
@@ -177,7 +178,7 @@ function help () {
 	echo "d	Clean up the mount point for the listed accounts"
 	echo "h	Show this help message"
 	echo
-	echo "Atypical Dependencies: fuse-overlayfs and xdotool, an already working GW2 launch script to reference"
+	echo "Atypical Dependencies: fuse-overlayfs, xdotool, and xprop, an already working GW2 launch script to reference"
 	# setsid is provided by util-linux, which also provides mount
 	# pgrep is provided by procps-ng, which also provides ps
 }
@@ -212,19 +213,34 @@ function setup () {
 		fi
 
 		fuse-overlayfs -o lowerdir="$GW2_BASE_WINEPREFIX" -o upperdir="$GW2_ALT_RUNTIME_DIR/upper-$1" -o workdir="$GW2_ALT_RUNTIME_DIR/work-$1" "$GW2_ALT_RUNTIME_DIR/$1"
+		local rc=$?
+		if [[ $rc -ne 0 ]]; then
+			echo "Error: fuse-overlayfs failed to mount overlay for $1"
+			rm -rf "$GW2_ALT_RUNTIME_DIR/upper-$1" "$GW2_ALT_RUNTIME_DIR/work-$1" "${GW2_ALT_RUNTIME_DIR:?}/$1"
+			exit 1
+		fi
 	fi
 
-	cp "$GW2_ALT_DATA_DIR/$GFX_FILE" "$GW2_ALT_RUNTIME_DIR/$1/$GW2_WINE_APPDATA_PATH/"
+	cp "$GW2_ALT_DATA_DIR/$GFX_FILE" "$GW2_ALT_RUNTIME_DIR/$1/$GW2_APPDATA_PATH/"
 	# check if the file exists first
 	if test -f "$GW2_ALT_DATA_DIR/$1.dat"; then
-		cp "$GW2_ALT_DATA_DIR/$1.dat" "$GW2_ALT_RUNTIME_DIR/$1/$GW2_WINE_APPDATA_PATH/Local.dat"
+		cp "$GW2_ALT_DATA_DIR/$1.dat" "$GW2_ALT_RUNTIME_DIR/$1/$GW2_APPDATA_PATH/Local.dat"
 	fi
+}
+
+function _runexclusive_interrupted () {
+	if test -f "$GW2_BASE_APPDATA/Local.dat.bak"; then
+		mv "$GW2_BASE_APPDATA/Local.dat.bak" "$GW2_BASE_APPDATA/Local.dat"
+	fi
+	rm -f "$LOCKFILE"
+	echo "Base game installation restored (interrupted)"
 }
 
 # Run, using the original installation
 function runexclusive () {
 	echo "Warning: base game installation temporarily in use. Do not launch the game by other means until this completes."
 	echo $$ > "$LOCKFILE"
+	trap '_runexclusive_interrupted; exit 1' INT TERM
 
 	export WINEPREFIX="$GW2_BASE_WINEPREFIX"
 
@@ -242,17 +258,22 @@ function runexclusive () {
 	# Wait for this to return
 	"$WINE" "$WINEPREFIX/$GW2_WINE_INSTALL_PATH/$GAME_EXE" "${args[@]}" &> "$GW2_ALT_RUNTIME_DIR/$name".log
 
-	mv "$GW2_BASE_APPDATA"/Local.dat "$GW2_ALT_DATA_DIR/$name.dat"
+	if test -f "$GW2_BASE_APPDATA"/Local.dat; then
+		mv "$GW2_BASE_APPDATA"/Local.dat "$GW2_ALT_DATA_DIR/$name.dat"
+	else
+		echo "Warning: account setup for '$name' failed — the game probably crashed. Please ensure the game runs normally, then try setting up with -o again."
+	fi
 	if test -f "$GW2_BASE_APPDATA"/Local.dat.bak; then
 		cp "$GW2_BASE_APPDATA"/Local.dat.bak "$GW2_BASE_APPDATA"/Local.dat
 	fi
 
 	# If there is a set up mount for that account, copy the updated .dat file there too
 	if test -d "$GW2_ALT_RUNTIME_DIR/$name"; then
-		cp "$GW2_ALT_DATA_DIR/$name.dat" "$GW2_ALT_RUNTIME_DIR/$name/$GW2_WINE_APPDATA_PATH/Local.dat"
+		cp "$GW2_ALT_DATA_DIR/$name.dat" "$GW2_ALT_RUNTIME_DIR/$name/$GW2_APPDATA_PATH/Local.dat"
 	fi
 
 	rm -f "$LOCKFILE"
+	trap - INT TERM
 	echo "Base game installation restored"
 	# No other cleanup: we didn't create an overlay
 }
@@ -277,7 +298,6 @@ function run() {
 		rm "$GW2_ALT_RUNTIME_DIR/$1".pid
 	fi
 
-	sleep 1 # TODO need something less load/performance dependent
 	remove "$1"
 
 	#killall CrGpuMain CrUtilityMain CrRendererMain start.exe explorer.exe GW2-64.exe
@@ -304,6 +324,7 @@ function runwithpid () {
 }
 
 function getwindowhandle () {
+	[ -f "$GW2_ALT_RUNTIME_DIR/$1".pid ] || return 1
 	local pid
 	pid=$(<"$GW2_ALT_RUNTIME_DIR/$1".pid)
 	xdotool search --all --onlyvisible --pid "$pid" --class "$GAME_EXE"
@@ -354,7 +375,7 @@ function close () {
 	fi
 	local handle
 	handle=$(getwindowhandle "$1")
-	xdotool windowquit "$handle"
+	xdotool windowclose "$handle"
 }
 
 function remove () {
@@ -362,7 +383,15 @@ function remove () {
 		echo "$1 not found"
 		return 1
 	fi
-	fusermount -u "$GW2_ALT_RUNTIME_DIR/$1"
+	local count=0
+	until fusermount -u "$GW2_ALT_RUNTIME_DIR/$1" 2>>"$GW2_ALT_RUNTIME_DIR/$1".log; do
+		count=$((count + 1))
+		if [[ $count -ge 30 ]]; then
+			echo "Warning: could not unmount overlay for $1 after ${count}s. Please kill the hanging processes, then run \`gw2-alt.sh -d $1\` to retry."
+			return 1
+		fi
+		sleep 1
+	done
 	rm -rf "$GW2_ALT_RUNTIME_DIR/upper-$1" "$GW2_ALT_RUNTIME_DIR/work-$1" "${GW2_ALT_RUNTIME_DIR:?}/$1"
 }
 
@@ -370,8 +399,8 @@ function remove () {
 # Partial credit: https://stackoverflow.com/a/29107686/118153
 me_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 me_FILE=$(basename "$0")
-if [ "$1" == "run" ] ; then
-	runwithpid "$2"
+if [[ "$GW2_ALT_INTERNAL_REENTRY" == "1" ]] ; then
+	runwithpid "$1"
 	exit 0
 fi
 
@@ -403,16 +432,10 @@ fi
 
 while test $# -gt 0
 do
-	if [[ $OPT_UPDATE || $OPT_CONFIG || $OPT_RUN ]]
-	then
-		setup "$1"
-	fi
-
 	# Don't know why, but it works better if we rebuild after an update.
 	if [[ $OPT_UPDATE ]]
 	then
 		update "$1"
-		# no need to remove explicitly anymore, implicit now
 	fi
 
 	if [[ $OPT_CONFIG ]]
@@ -423,6 +446,7 @@ do
 
 	if [[ $OPT_RUN ]]
 	then
+		setup "$1"
 		if [ ! -d "$GW2_ALT_RUNTIME_DIR/$1" ]; then
 			echo "$1 not set up yet" # shouldn't happen anymore
 			exit 1
@@ -434,7 +458,7 @@ do
 			exit 1
 		fi
 		echo "Running $1"
-		setsid "$me_DIR"/"$me_FILE" run "$1" &
+		GW2_ALT_INTERNAL_REENTRY=1 setsid "$me_DIR"/"$me_FILE" "$1" &
 		waitrun "$1"
 		setname "$1" &
 	fi

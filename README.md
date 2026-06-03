@@ -12,11 +12,11 @@ from distinct `WINEPREFIX`s. However, the `Gw2.dat` file is 76 G and counting,
 making storing multiple instances challenging.
 
 This script uses `fuse-overlayfs` to dynamically create `WINEPREFIX`s with
-minimal overhead, runs the game, and uses `xdotool` to detect launches (allowing
-sequential launch to avoid X11 CPU overuse trying to draw overlapping odd
-geometry partially transparent windows). Other dependencies which are _usually_
-installed by default: `bash`, `setsid` (probably from `util-linux`) and `pgrep`
-(probably from `procps-ng`).
+minimal overhead, runs the game, and uses `xdotool` and `xprop` to detect
+launches (allowing sequential launch to avoid X11 CPU overuse trying to draw
+overlapping odd geometry partially transparent windows). Other dependencies
+which are _usually_ installed by default: `bash`, `setsid` (probably from
+`util-linux`) and `pgrep` (probably from `procps-ng`).
 
 To use this script you need to already be able to run GW2 from the command line
 (if you have a working install via Lutris, you can generate one with something
