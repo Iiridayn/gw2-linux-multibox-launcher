@@ -16,6 +16,7 @@ WINE="wine" # default
 GW2_ALT_RUNTIME_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/gw2alts"
 GW2_ALT_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/gw2alts"
 GW2_WINE_INSTALL_PATH="drive_c/Program Files/Guild Wars 2" # default
+GW2_WINE_APPDATA_PATH="drive_c/users/$USER/AppData/Roaming/Guild Wars 2"
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/gw2alts"
 
@@ -85,6 +86,11 @@ EOF
 	exit 1
 fi
 
+# Variables derived from others set
+GW2_BASE_APPDATA="$GW2_BASE_WINEPREFIX/$GW2_WINE_APPDATA_PATH"
+
+# Figure out the executable name; I've seen GW2-64.exe and Gw2-64.exe; windows
+# is by default case-insensitive, so the change wasn't a problem there.
 if [ ! -d "$GW2_BASE_WINEPREFIX/$GW2_WINE_INSTALL_PATH" ]; then
 	echo "Cannot find the GW2 executable. Please configure GW2_WINE_INSTALL_PATH."
 	exit 1
@@ -101,7 +107,6 @@ GFX_FILE="GFXSettings.$GAME_EXE.xml"
 function get_drive () {
 	df -P "$1" | awk 'END{print $1}'
 }
-
 # Create dirs if not exist
 if [ ! -d "$GW2_ALT_RUNTIME_DIR" ]; then
 	echo "Runtime directory not found. Creating $GW2_ALT_RUNTIME_DIR"
@@ -122,12 +127,22 @@ if [ ! -d "$GW2_ALT_DATA_DIR" ]; then
 
 	cat << EOF
 
-Copying "$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/$GFX_FILE" to $GW2_ALT_DATA_DIR
+Copying "$GW2_BASE_WINEPREFIX/$GW2_WINE_APPDATA_PATH/$GFX_FILE" to $GW2_ALT_DATA_DIR
 If you would like to have special (eg, reduced) graphics settings when running multiple accounts, please backup your $GFX_FILE, launch the game and change your graphics to the multibox values, replace $GW2_ALT_DATA_DIR/$GFX_FILE with the updated file, and restore your previous $GFX_FILE
 Alternatively, you can copy a previously prepared $GFX_FILE to $GW2_ALT_DATA_DIR/
 
 EOF
-	cp "$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/$GFX_FILE" "$GW2_ALT_DATA_DIR"
+	cp "$GW2_BASE_WINEPREFIX/$GW2_WINE_APPDATA_PATH/$GFX_FILE" "$GW2_ALT_DATA_DIR"
+fi
+
+# Should be after the block above that creates GW2_ALT_RUNTIME_DIR
+LOCKFILE="$GW2_ALT_RUNTIME_DIR/using_base_install.lock"
+if test -f "$LOCKFILE"; then
+	echo "A configuration or update is already running (PID $(cat "$LOCKFILE" 2>/dev/null)). If it is not:"
+	echo "  Salvage account data: cp \"$GW2_BASE_APPDATA/Local.dat\" \"$GW2_ALT_DATA_DIR/<account>.dat\""
+	echo "  Restore base config:  mv \"$GW2_BASE_APPDATA/Local.dat.bak\" \"$GW2_BASE_APPDATA/Local.dat\""
+	echo "Then delete $LOCKFILE and try again."
+	exit 1
 fi
 
 # support declaring flags as a string "" instead of an array ()
@@ -199,42 +214,47 @@ function setup () {
 		fuse-overlayfs -o lowerdir="$GW2_BASE_WINEPREFIX" -o upperdir="$GW2_ALT_RUNTIME_DIR/upper-$1" -o workdir="$GW2_ALT_RUNTIME_DIR/work-$1" "$GW2_ALT_RUNTIME_DIR/$1"
 	fi
 
-	cp "$GW2_ALT_DATA_DIR/$GFX_FILE" "$GW2_ALT_RUNTIME_DIR/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/"
+	cp "$GW2_ALT_DATA_DIR/$GFX_FILE" "$GW2_ALT_RUNTIME_DIR/$1/$GW2_WINE_APPDATA_PATH/"
 	# check if the file exists first
 	if test -f "$GW2_ALT_DATA_DIR/$1.dat"; then
-		cp "$GW2_ALT_DATA_DIR/$1.dat" "$GW2_ALT_RUNTIME_DIR/$1/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat"
+		cp "$GW2_ALT_DATA_DIR/$1.dat" "$GW2_ALT_RUNTIME_DIR/$1/$GW2_WINE_APPDATA_PATH/Local.dat"
 	fi
 }
 
 # Run, using the original installation
 function runexclusive () {
+	echo "Warning: base game installation temporarily in use. Do not launch the game by other means until this completes."
+	echo $$ > "$LOCKFILE"
+
 	export WINEPREFIX="$GW2_BASE_WINEPREFIX"
-	GW2CONF_DIR="$GW2_BASE_WINEPREFIX/drive_c/users/$USER/AppData/Roaming/Guild Wars 2"
 
 	local name="$1"
 	shift
 	local args=("$@")
 
-	if test -f "$GW2CONF_DIR"/Local.dat; then
-		mv "$GW2CONF_DIR"/Local.dat "$GW2CONF_DIR"/Local.dat.bak
+	if test -f "$GW2_BASE_APPDATA"/Local.dat; then
+		mv "$GW2_BASE_APPDATA"/Local.dat "$GW2_BASE_APPDATA"/Local.dat.bak
 	fi
 	if test -f "$GW2_ALT_DATA_DIR/$name.dat"; then
-		cp "$GW2_ALT_DATA_DIR/$name.dat" "$GW2CONF_DIR"/Local.dat
+		cp "$GW2_ALT_DATA_DIR/$name.dat" "$GW2_BASE_APPDATA"/Local.dat
 	fi
 
+	# Wait for this to return
 	"$WINE" "$WINEPREFIX/$GW2_WINE_INSTALL_PATH/$GAME_EXE" "${args[@]}" &> "$GW2_ALT_RUNTIME_DIR/$name".log
 
-	mv "$GW2CONF_DIR"/Local.dat "$GW2_ALT_DATA_DIR/$name.dat"
-	if test -f "$GW2CONF_DIR"/Local.dat.bak; then
-		cp "$GW2CONF_DIR"/Local.dat.bak "$GW2CONF_DIR"/Local.dat
+	mv "$GW2_BASE_APPDATA"/Local.dat "$GW2_ALT_DATA_DIR/$name.dat"
+	if test -f "$GW2_BASE_APPDATA"/Local.dat.bak; then
+		cp "$GW2_BASE_APPDATA"/Local.dat.bak "$GW2_BASE_APPDATA"/Local.dat
 	fi
 
 	# If there is a set up mount for that account, copy the updated .dat file there too
 	if test -d "$GW2_ALT_RUNTIME_DIR/$name"; then
-		cp "$GW2_ALT_DATA_DIR/$name.dat" "$GW2_ALT_RUNTIME_DIR/$name/drive_c/users/$USER/AppData/Roaming/Guild Wars 2/Local.dat"
+		cp "$GW2_ALT_DATA_DIR/$name.dat" "$GW2_ALT_RUNTIME_DIR/$name/$GW2_WINE_APPDATA_PATH/Local.dat"
 	fi
 
-	# No cleanup for run exclusive - lets configure upper template, and required to allow backup of Local.dat
+	rm -f "$LOCKFILE"
+	echo "Base game installation restored"
+	# No other cleanup: we didn't create an overlay
 }
 
 function update () {
@@ -397,7 +417,7 @@ do
 
 	if [[ $OPT_CONFIG ]]
 	then
-		echo "Running without -shareArchive to configure $1"
+		echo "Configuring $1"
 		configure "$1"
 	fi
 
