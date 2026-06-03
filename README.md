@@ -30,6 +30,12 @@ not always consistently worked for others, and I've not always been able to
 track down why. This is still alpha software. The command line options have
 already changed once, and _may_ again.
 
+If you are not already comfortable running GW2 from the command line, would
+prefer to avoid installing `fuse-overlayfs`, or prefer GUI tools,
+[sir_launchalot](https://github.com/PieOrCake/sir_launchalot) appears to be a
+genuinely solid user-friendly alternative. Had it existed when I started this I
+would have used it instead.
+
 ## Support
 
 Please let me know if you find any bugs - especially if you also have
