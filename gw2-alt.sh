@@ -44,6 +44,7 @@ export GW2_FLAGS=()
 # (also probably default)
 #export GW2_MEMORY_MAX="4G"
 #export GW2_MEMORY_HIGH="3G"
+#export GW2_MEMORY_SWAP="2G"
 
 # Replace the lines below this with all the environment variables needed to run
 # GW2 - these come from your CLI launcher script. If you generated it via:
@@ -158,6 +159,7 @@ if [ -n "$GW2_MEMORY_MAX" ] && command -v systemd-run &>/dev/null; then
 	if [ -f "$_uid_cgroup/memory.max" ]; then
 		MEMORY_LIMIT_CMD=(systemd-run --user --scope --slice gw2-alts -p "MemoryMax=$GW2_MEMORY_MAX")
 		[ -n "$GW2_MEMORY_HIGH" ] && MEMORY_LIMIT_CMD+=(-p "MemoryHigh=$GW2_MEMORY_HIGH")
+		[ -n "$GW2_MEMORY_SWAP" ] && MEMORY_LIMIT_CMD+=(-p "MemorySwapMax=$GW2_MEMORY_SWAP")
 	else
 		echo "Warning: GW2_MEMORY_MAX set but cgroup memory controller not delegated to user scope; running without memory limit"
 	fi
