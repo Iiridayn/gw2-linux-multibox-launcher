@@ -309,7 +309,7 @@ function runwithpid () {
 	local sess pid count=0
 	sess=$(ps -o sess= $$ | xargs)
 	while true; do
-		pid=$(ps -o pid=,comm= -s "$sess" | grep "$GAME_EXE" | awk '{ print $1 }')
+		pid=$(pgrep -s "$sess" "$GAME_EXE")
 		if [[ -n "$pid" ]]; then
 			echo "$pid" > "$GW2_ALT_RUNTIME_DIR/$1".pid
 			break
