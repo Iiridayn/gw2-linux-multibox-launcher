@@ -187,7 +187,7 @@ function help () {
 function list () {
 	echo "Accounts with a configured Local.dat:"
 	local list
-	list=$(find "$GW2_ALT_DATA_DIR" -iname '*.dat' | sort -h | xargs -r basename -s .dat | paste -sd' ')
+	list=$(find "$GW2_ALT_DATA_DIR" -maxdepth 1 -iname '*.dat' | sort -h | xargs -r basename -s .dat | paste -sd' ')
 	if [ -z "$list" ]; then
 		echo "No accounts found. Set one up by running \`$0 -o account-name\`"
 	else
