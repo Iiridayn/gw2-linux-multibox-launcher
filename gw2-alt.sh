@@ -327,28 +327,25 @@ function getwindowhandle () {
 	[ -f "$GW2_ALT_RUNTIME_DIR/$1".pid ] || return 1
 	local pid
 	pid=$(<"$GW2_ALT_RUNTIME_DIR/$1".pid)
-	xdotool search --all --onlyvisible --pid "$pid" --class "$GAME_EXE"
+	xdotool search --all --onlyvisible --pid "$pid" | head -1
 }
 
 function waitrun () {
-	# TODO: put in an upper limit, and print a warning if reached?
 	while [ ! -f "$GW2_ALT_RUNTIME_DIR/$1".pid ]; do
 		sleep 1
 	done
 
-	local handle geometry
+	local handle hints min_size max_size
 	while [ -f "$GW2_ALT_RUNTIME_DIR/$1".pid ]; do
 		handle=$(getwindowhandle "$1")
-		if [ ! -z "$handle" ]; then
-			# Handle not empty - worth running the next command
-			# TODO: don't run this if handle doesn't exist, say something more meaningful
-			geometry=$(xdotool getwindowgeometry "$handle" | tail -n 1 | awk '{ print $2 }')
-			# The geometry for the launcher window is fixed at 1120x976
-			# XXX: if the user _happens_ to pick the same window size, this won't terminate
-			if [ -n "$geometry" ] && [ "$geometry" != '1120x976' ]; then
+		if [ -n "$handle" ]; then
+			hints=$(xprop -id "$handle" WM_NORMAL_HINTS 2>/dev/null)
+			min_size=$(echo "$hints" | grep 'minimum size' | grep -oE '[0-9]+ by [0-9]+')
+			max_size=$(echo "$hints" | grep 'maximum size' | grep -oE '[0-9]+ by [0-9]+')
+			# Launcher is fixed-size (min==max); game client is resizable (no max, or min!=max)
+			if [ -z "$max_size" ] || [ "$min_size" != "$max_size" ]; then
 				break
 			fi
-			#echo "$geometry"
 		fi
 		sleep 1
 	done
