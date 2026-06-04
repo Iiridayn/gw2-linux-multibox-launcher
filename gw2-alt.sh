@@ -382,9 +382,18 @@ function close () {
 		echo "$1 is not running"
 		return 1
 	fi
-	local handle
-	handle=$(getwindowhandle "$1")
-	xdotool windowclose "$handle"
+	local pid count=0
+	pid=$(<"$GW2_ALT_RUNTIME_DIR/$1".pid)
+	kill -INT "$pid"
+	until ! kill -0 "$pid" 2>/dev/null; do
+		count=$((count + 1))
+		if [[ $count -ge 30 ]]; then
+			echo "Warning: $1 did not exit after ${count}s, force-killing"
+			break
+		fi
+		sleep 1
+	done
+	WINEPREFIX="$GW2_ALT_RUNTIME_DIR/$1" wineserver -k
 }
 
 function remove () {
@@ -392,6 +401,7 @@ function remove () {
 		echo "$1 not found"
 		return 1
 	fi
+	WINEPREFIX="$GW2_ALT_RUNTIME_DIR/$1" wineserver -k
 	local count=0
 	until fusermount -u "$GW2_ALT_RUNTIME_DIR/$1" 2>>"$GW2_ALT_RUNTIME_DIR/$1".log; do
 		count=$((count + 1))
