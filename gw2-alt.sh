@@ -303,36 +303,31 @@ function run() {
 	export WINEPREFIX="$GW2_ALT_RUNTIME_DIR/$1"
 	local launch=("${MEMORY_LIMIT_CMD[@]}")
 	[[ ${#launch[@]} -gt 0 ]] && launch+=(--unit "gw2-$1" --)
-	"${launch[@]}" "$WINE" "$WINEPREFIX/$GW2_WINE_INSTALL_PATH/$GAME_EXE" -shareArchive "${GW2_FLAGS[@]}" &> "$GW2_ALT_RUNTIME_DIR/$1".log
+	setsid "${launch[@]}" "$WINE" "$WINEPREFIX/$GW2_WINE_INSTALL_PATH/$GAME_EXE" -shareArchive "${GW2_FLAGS[@]}" &> "$GW2_ALT_RUNTIME_DIR/$1".log &
+	local wine_sess
+	wine_sess=$(ps -o sess= -p $! | tr -d ' ')
 
-	# Wait for the above to exit, then
-	if test -f "$GW2_ALT_RUNTIME_DIR/$1".pid; then
-		rm "$GW2_ALT_RUNTIME_DIR/$1".pid
-	fi
-
-	remove "$1"
-
-	#killall CrGpuMain CrUtilityMain CrRendererMain start.exe explorer.exe GW2-64.exe
-}
-
-function runwithpid () {
-	run "$1" &
-
-	local sess pid count=0
-	sess=$(ps -o sess= $$ | xargs)
+	local pid count=0
 	while true; do
-		pid=$(pgrep -s "$sess" "$GAME_EXE")
+		pid=$(pgrep -s "$wine_sess" -ix "$GAME_EXE" 2>/dev/null | head -1)
 		if [[ -n "$pid" ]]; then
-			echo "$pid" > "$GW2_ALT_RUNTIME_DIR/$1".pid
 			break
 		fi
 		count=$((count + 1))
-		if [[ $count -ge 120 ]]; then
-			echo "Warning: timed out waiting for $GAME_EXE to start" >&2
-			break
+		if [[ $count -ge 30 ]]; then
+			echo "Error: timed out waiting for $GAME_EXE to launch" >&2
+			remove "$1"
+			exit 1
 		fi
 		sleep 1
 	done
+	echo "$pid" > "$GW2_ALT_RUNTIME_DIR/$1".pid
+	echo "Launched $1"
+
+	WINEPREFIX="$GW2_ALT_RUNTIME_DIR/$1" wineserver --wait
+
+	rm -f "$GW2_ALT_RUNTIME_DIR/$1".pid
+	remove "$1"
 }
 
 function getwindowhandle () {
@@ -344,10 +339,13 @@ function getwindowhandle () {
 
 function waitrun () {
 	while [ ! -f "$GW2_ALT_RUNTIME_DIR/$1".pid ]; do
+		if ! kill -0 "$2" 2>/dev/null; then
+			return 1
+		fi
 		sleep 1
 	done
 
-	local handle hints min_size max_size
+	local handle hints min_size max_size count=0
 	while [ -f "$GW2_ALT_RUNTIME_DIR/$1".pid ]; do
 		handle=$(getwindowhandle "$1")
 		if [ -n "$handle" ]; then
@@ -359,8 +357,15 @@ function waitrun () {
 				break
 			fi
 		fi
+		count=$((count + 1))
+		if [[ $count -ge 120 ]]; then
+			echo "Error: timed out waiting for $1 to finish loading" >&2
+			return 1
+		fi
 		sleep 1
 	done
+
+	echo "Loaded $1"
 }
 
 function setname () {
@@ -414,14 +419,6 @@ function remove () {
 	rm -rf "$GW2_ALT_RUNTIME_DIR/upper-$1" "$GW2_ALT_RUNTIME_DIR/work-$1" "${GW2_ALT_RUNTIME_DIR:?}/$1"
 }
 
-# Check if I'm launching the game in a setsid subshell
-# Partial credit: https://stackoverflow.com/a/29107686/118153
-me_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-me_FILE=$(basename "$0")
-if [[ "$GW2_ALT_INTERNAL_REENTRY" == "1" ]] ; then
-	runwithpid "$1"
-	exit 0
-fi
 
 OPT_UPDATE=
 OPT_CONFIG=
@@ -483,15 +480,10 @@ do
 			echo "$1 not set up yet" # shouldn't happen anymore
 			exit 1
 		fi
-		# TODO: really need to consider UX. Should I just make myself
-		# executable? Would that violate the principle of least astonishment?
-		if [ ! -x "$me_DIR/$me_FILE" ]; then
-			echo "$me_DIR/$me_FILE must be executable - \`chmod +x \"$me_DIR/$me_FILE\"\`"
-			exit 1
-		fi
 		echo "Running $1"
-		GW2_ALT_INTERNAL_REENTRY=1 setsid "$me_DIR"/"$me_FILE" "$1" &
-		waitrun "$1"
+		run "$1" &
+		run_pid=$!
+		waitrun "$1" "$run_pid" || exit 1
 		setname "$1" &
 	fi
 
