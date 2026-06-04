@@ -148,7 +148,8 @@ fi
 
 # support declaring flags as a string "" instead of an array ()
 if [[ ! "$(declare -p GW2_FLAGS 2>/dev/null)" =~ "declare -a" ]]; then
-    read -ra GW2_FLAGS <<< "$GW2_FLAGS"
+	# shellcheck disable=SC2128
+	read -ra GW2_FLAGS <<< "$GW2_FLAGS"
 fi
 
 MEMORY_LIMIT_CMD=()
@@ -236,9 +237,15 @@ function _runexclusive_interrupted () {
 	echo "Base game installation restored (interrupted)"
 }
 
+# Only print the warning once at start, and restored message once at end, to avoid log spam
+_runexclusive_warned=
+_runexclusive_final=
 # Run, using the original installation
 function runexclusive () {
-	echo "Warning: base game installation temporarily in use. Do not launch the game by other means until this completes."
+	if [[ -z "$_runexclusive_warned" ]]; then
+		echo "Warning: base game installation temporarily in use. Do not launch the game by other means until this completes."
+		_runexclusive_warned=1
+	fi
 	echo $$ > "$LOCKFILE"
 	trap '_runexclusive_interrupted; exit 1' INT TERM
 
@@ -257,6 +264,12 @@ function runexclusive () {
 
 	# Wait for this to return
 	"$WINE" "$WINEPREFIX/$GW2_WINE_INSTALL_PATH/$GAME_EXE" "${args[@]}" &> "$GW2_ALT_RUNTIME_DIR/$name".log
+	local game_rc=$?
+	if [[ $game_rc -ne 0 ]]; then
+		echo "Warning: $name exited with code $game_rc — retrying once"
+		"$WINE" "$WINEPREFIX/$GW2_WINE_INSTALL_PATH/$GAME_EXE" "${args[@]}" &>> "$GW2_ALT_RUNTIME_DIR/$name".log
+		game_rc=$?
+	fi
 
 	if test -f "$GW2_BASE_APPDATA"/Local.dat; then
 		mv "$GW2_BASE_APPDATA"/Local.dat "$GW2_ALT_DATA_DIR/$name.dat"
@@ -274,8 +287,9 @@ function runexclusive () {
 
 	rm -f "$LOCKFILE"
 	trap - INT TERM
-	echo "Base game installation restored"
+	[[ -n "$_runexclusive_final" ]] && echo "Base game installation restored"
 	# No other cleanup: we didn't create an overlay
+	return $game_rc
 }
 
 function update () {
@@ -432,11 +446,15 @@ do
 	# Don't know why, but it works better if we rebuild after an update.
 	if [[ $OPT_UPDATE ]]
 	then
-		update "$1"
+		[[ $# -eq 1 ]] && _runexclusive_final=1
+		if ! update "$1"; then
+			echo "Warning: update of $1 failed after retry"
+		fi
 	fi
 
 	if [[ $OPT_CONFIG ]]
 	then
+		_runexclusive_final=1
 		echo "Configuring $1"
 		configure "$1"
 	fi
