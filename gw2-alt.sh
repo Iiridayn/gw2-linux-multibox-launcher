@@ -203,15 +203,7 @@ function setup () {
 	if [ ! -d "$GW2_ALT_RUNTIME_DIR/$1" ]; then
 		echo "Preparing $1"
 
-		mkdir -p "$GW2_ALT_RUNTIME_DIR/work-$1" "$GW2_ALT_RUNTIME_DIR/$1"
-
-		# We have a template upper directory including file overrides; use it
-		# TODO: document this, how to create by getting how you want then copying the upper dir, and removing unessential changes
-		if test -d "$GW2_ALT_DATA_DIR/upper"; then
-			cp -a "$GW2_ALT_DATA_DIR/upper" "$GW2_ALT_RUNTIME_DIR/upper-$1"
-		else
-			mkdir "$GW2_ALT_RUNTIME_DIR/upper-$1"
-		fi
+		mkdir -p "$GW2_ALT_RUNTIME_DIR/upper-$1" "$GW2_ALT_RUNTIME_DIR/work-$1" "$GW2_ALT_RUNTIME_DIR/$1"
 
 		fuse-overlayfs -o lowerdir="$GW2_BASE_WINEPREFIX" -o upperdir="$GW2_ALT_RUNTIME_DIR/upper-$1" -o workdir="$GW2_ALT_RUNTIME_DIR/work-$1" "$GW2_ALT_RUNTIME_DIR/$1"
 		local rc=$?
@@ -220,6 +212,12 @@ function setup () {
 			rm -rf "$GW2_ALT_RUNTIME_DIR/upper-$1" "$GW2_ALT_RUNTIME_DIR/work-$1" "${GW2_ALT_RUNTIME_DIR:?}/$1"
 			exit 1
 		fi
+	fi
+
+	# Apply addon override files, if any
+	if test -d "$GW2_ALT_DATA_DIR/_addons"; then
+		mkdir -p "$GW2_ALT_RUNTIME_DIR/$1/$GW2_WINE_INSTALL_PATH/addons"
+		cp -a "$GW2_ALT_DATA_DIR/_addons/." "$GW2_ALT_RUNTIME_DIR/$1/$GW2_WINE_INSTALL_PATH/addons/"
 	fi
 
 	cp "$GW2_ALT_DATA_DIR/$GFX_FILE" "$GW2_ALT_RUNTIME_DIR/$1/$GW2_APPDATA_PATH/"
@@ -443,6 +441,15 @@ fi
 
 while test $# -gt 0
 do
+	# _ gives me a reserved namespace in case all files are dumped together
+	# Might seem hypothetical, but witnessed in practice.
+	# If you already had one with _ at the start, can rename it
+	if [[ "$1" == _* ]]; then
+		echo "Skipping $1: account names may not start with _"
+		shift
+		continue
+	fi
+
 	# Don't know why, but it works better if we rebuild after an update.
 	if [[ $OPT_UPDATE ]]
 	then

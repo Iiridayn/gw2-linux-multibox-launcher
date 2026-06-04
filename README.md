@@ -30,6 +30,11 @@ not always consistently worked for others, and I've not always been able to
 track down why. This is still alpha software. The command line options have
 already changed once, and _may_ again.
 
+Another optional feature - can have a `_addons` directory in `GW2_ALT_DATA_DIR`
+with override files for extensions. I use it to change default arcdps display
+settings (ini files) when running multiple accounts since I run them in small
+windows.
+
 If you are not already comfortable running GW2 from the command line, would
 prefer to avoid installing `fuse-overlayfs`, or prefer GUI tools,
 [sir_launchalot](https://github.com/PieOrCake/sir_launchalot) appears to be a
