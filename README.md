@@ -16,7 +16,8 @@ minimal overhead, runs the game, and uses `xdotool` and `xprop` to detect
 launches (allowing sequential launch to avoid X11 CPU overuse trying to draw
 overlapping odd geometry partially transparent windows). Other dependencies
 which are _usually_ installed by default: `bash`, `setsid` (probably from
-`util-linux`) and `pgrep` (probably from `procps-ng`).
+`util-linux`) and `pgrep` (probably from `procps-ng`). I am not sure if it works
+in Wayland.
 
 To use this script you need to already be able to run GW2 from the command line
 (if you have a working install via Lutris, you can generate one with something

@@ -5,7 +5,7 @@ if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
 	echo "This script does not work properly if you source it - please ensure it is executable via \`chmod +x gw2-alt.sh\` and run it via for example \`./gw2-alt.sh\`"
 	return 1
 fi
-if [ ! -f "/bin/bash" ]; then
+if [ -z "$BASH_VERSION" ]; then
 	echo "This script expects to be run by bash. Please make sure it is installed on your system."
 	exit 1
 fi
